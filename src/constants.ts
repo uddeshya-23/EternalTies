@@ -15,7 +15,8 @@ export const CATEGORY_COLORS: Record<Category, string> = {
 
 export const INITIAL_EXPENSES: Expense[] = [
   // Gold & Jewelry
-  { id: '1', title: 'Gold (Pending)', amount: 750000, category: 'Gold & Jewelry', status: 'Pending', date: '2026-03-20' },
+  { id: 'gold-pending', title: 'Gold (Remaining Balance)', amount: 750000, category: 'Gold & Jewelry', status: 'Pending', date: '2026-03-20' },
+  { id: 'gold-paid', title: 'Gold (Advance Payment)', amount: 1200000, category: 'Gold & Jewelry', status: 'Paid', date: '2026-03-20' },
   { id: '2', title: 'Engagement Ring', amount: 170000, category: 'Gold & Jewelry', status: 'Paid', date: '2026-03-15' },
   { id: '3', title: 'UD Chain', amount: 150000, category: 'Gold & Jewelry', status: 'Paid', date: '2026-03-10' },
   { id: '4', title: 'Madhu Ring', amount: 32000, category: 'Gold & Jewelry', status: 'Paid', date: '2026-03-12' },

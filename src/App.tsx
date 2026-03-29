@@ -23,6 +23,7 @@ import {
   MoreHorizontal,
   Download,
   Upload,
+  RotateCcw,
   Mic,
   Sparkles,
   Wand2,
@@ -74,7 +75,16 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_EXPENSES;
   });
   
+  const [plannedBudget, setPlannedBudget] = useState<number>(() => {
+    const saved = localStorage.getItem('marriage_planned_budget');
+    return saved ? Number(saved) : 3000000; // Default 30L
+  });
+  
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
+  const [tempBudget, setTempBudget] = useState(plannedBudget.toString());
+
   const [isAdding, setIsAdding] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [isMagicAssistantOpen, setIsMagicAssistantOpen] = useState(false);
   const [filterCategory, setFilterCategory] = useState<Category | 'All'>('All');
   const [filterStatus, setFilterStatus] = useState<'All' | 'Paid' | 'Pending'>('All');
@@ -102,12 +112,17 @@ export default function App() {
     localStorage.setItem('marriage_expenses', JSON.stringify(expenses));
   }, [expenses]);
 
+  useEffect(() => {
+    localStorage.setItem('marriage_planned_budget', plannedBudget.toString());
+  }, [plannedBudget]);
+
   const stats = useMemo(() => {
-    const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const estimatedTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
     const paid = expenses.filter(e => e.status === 'Paid').reduce((sum, e) => sum + e.amount, 0);
-    const pending = total - paid;
-    return { total, paid, pending };
-  }, [expenses]);
+    const pending = estimatedTotal - paid;
+    const remaining = plannedBudget - estimatedTotal;
+    return { plannedBudget, estimatedTotal, paid, pending, remaining };
+  }, [expenses, plannedBudget]);
 
   const categoryData = useMemo(() => {
     const data: CategorySummary[] = Object.keys(CATEGORY_COLORS).map(cat => {
@@ -179,7 +194,7 @@ export default function App() {
   };
 
   const handleExport = () => {
-    const dataStr = JSON.stringify(expenses, null, 2);
+    const dataStr = JSON.stringify({ expenses, plannedBudget }, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     const exportFileDefaultName = `marriage_expenses_${new Date().toISOString().split('T')[0]}.json`;
     const linkElement = document.createElement('a');
@@ -197,13 +212,24 @@ export default function App() {
         const json = JSON.parse(e.target?.result as string);
         if (Array.isArray(json)) {
           setExpenses(json);
-          alert('Data imported successfully!');
+        } else if (json.expenses && Array.isArray(json.expenses)) {
+          setExpenses(json.expenses);
+          if (json.plannedBudget) setPlannedBudget(json.plannedBudget);
         }
+        alert('Data imported successfully!');
       } catch (err) {
         alert('Invalid JSON file');
       }
     };
     reader.readAsText(file);
+  };
+
+  const saveBudget = () => {
+    const val = Number(tempBudget);
+    if (!isNaN(val) && val >= 0) {
+      setPlannedBudget(val);
+      setIsEditingBudget(false);
+    }
   };
 
   // AI Logic
@@ -369,6 +395,43 @@ export default function App() {
               <Download size={16} />
               Export
             </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsResetting(!isResetting)}
+                className={cn(
+                  "btn-secondary flex items-center gap-2 py-2 px-4 text-sm transition-all",
+                  isResetting ? "bg-red-50 text-red-600 border-red-200" : "text-gray-600"
+                )}
+              >
+                <RotateCcw size={16} className={cn(isResetting && "animate-spin")} />
+                {isResetting ? "Confirm Reset?" : "Reset"}
+              </button>
+              {isResetting && (
+                <div className="absolute top-full right-0 mt-2 bg-white border border-red-100 shadow-xl rounded-lg p-3 z-50 w-64 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <p className="text-xs text-gray-600 mb-3">This will erase all your changes and restore the default list (including the 12L gold advance).</p>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        setExpenses(INITIAL_EXPENSES);
+                        setPlannedBudget(3000000);
+                        localStorage.removeItem('marriage_expenses');
+                        localStorage.removeItem('marriage_planned_budget');
+                        setIsResetting(false);
+                      }}
+                      className="flex-1 bg-red-600 text-white text-xs font-bold py-1.5 rounded hover:bg-red-700 transition-colors"
+                    >
+                      Yes, Reset
+                    </button>
+                    <button 
+                      onClick={() => setIsResetting(false)}
+                      className="flex-1 bg-gray-100 text-gray-600 text-xs font-bold py-1.5 rounded hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <button 
               onClick={() => setIsAdding(true)}
               className="btn-primary flex items-center justify-center gap-2 w-full md:w-auto"
@@ -386,14 +449,39 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-card p-6 flex items-center gap-4"
+            className="glass-card p-6 flex items-center gap-4 relative group"
           >
             <div className="w-12 h-12 bg-wedding-gold/10 rounded-full flex items-center justify-center text-wedding-gold">
-              <IndianRupee size={24} />
+              <TrendingUp size={24} />
             </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Budget</p>
-              <h3 className="text-2xl font-bold">{formatCurrency(stats.total)}</h3>
+            <div className="flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Planned Budget</p>
+              {isEditingBudget ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <input 
+                    autoFocus
+                    type="number"
+                    value={tempBudget}
+                    onChange={(e) => setTempBudget(e.target.value)}
+                    onBlur={saveBudget}
+                    onKeyDown={(e) => e.key === 'Enter' && saveBudget()}
+                    className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-wedding-gold/20"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-bold">{formatCurrency(stats.plannedBudget)}</h3>
+                  <button 
+                    onClick={() => {
+                      setTempBudget(plannedBudget.toString());
+                      setIsEditingBudget(true);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-wedding-gold transition-all"
+                  >
+                    <Wand2 size={14} />
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -401,14 +489,22 @@ export default function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass-card p-6 flex items-center gap-4 border-l-4 border-l-green-500"
+            className="glass-card p-6 flex items-center gap-4"
           >
-            <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center text-green-600">
-              <CheckCircle2 size={24} />
+            <div className="w-12 h-12 bg-wedding-slate/10 rounded-full flex items-center justify-center text-wedding-slate">
+              <IndianRupee size={24} />
             </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Paid</p>
-              <h3 className="text-2xl font-bold text-green-600">{formatCurrency(stats.paid)}</h3>
+            <div className="flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Estimated Total</p>
+              <h3 className="text-2xl font-bold">{formatCurrency(stats.estimatedTotal)}</h3>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                  PAID: {formatCurrency(stats.paid)}
+                </span>
+                <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                  PENDING: {formatCurrency(stats.pending)}
+                </span>
+              </div>
             </div>
           </motion.div>
 
@@ -416,14 +512,25 @@ export default function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="glass-card p-6 flex items-center gap-4 border-l-4 border-l-orange-500"
+            className={cn(
+              "glass-card p-6 flex items-center gap-4 border-l-4",
+              stats.remaining >= 0 ? "border-l-green-500" : "border-l-red-500"
+            )}
           >
-            <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center text-orange-600">
-              <Clock size={24} />
+            <div className={cn(
+              "w-12 h-12 rounded-full flex items-center justify-center",
+              stats.remaining >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+            )}>
+              {stats.remaining >= 0 ? <CheckCircle2 size={24} /> : <Clock size={24} />}
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Pending Amount</p>
-              <h3 className="text-2xl font-bold text-orange-600">{formatCurrency(stats.pending)}</h3>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Remaining Budget</p>
+              <h3 className={cn(
+                "text-2xl font-bold",
+                stats.remaining >= 0 ? "text-green-600" : "text-red-600"
+              )}>
+                {formatCurrency(stats.remaining)}
+              </h3>
             </div>
           </motion.div>
         </div>
