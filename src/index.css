@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", serif;
+  
+  --color-wedding-cream: #FDFBF7;
+  --color-wedding-gold: #D4AF37;
+  --color-wedding-slate: #2C3E50;
+  --color-wedding-rose: #E91E63;
+}
+
+@layer base {
+  body {
+    @apply bg-wedding-cream text-wedding-slate font-sans;
+  }
+  
+  h1, h2, h3 {
+    @apply font-serif;
+  }
+}
+
+.glass-card {
+  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-sm rounded-2xl;
+}
+
+.btn-primary {
+  @apply bg-wedding-gold text-white px-6 py-2 rounded-full font-medium transition-all active:scale-95 shadow-md;
+  
+  &:hover {
+    @apply opacity-90;
+  }
+}
+
+.btn-secondary {
+  @apply bg-white text-wedding-slate border border-wedding-slate/10 px-6 py-2 rounded-full font-medium transition-all active:scale-95;
+  
+  &:hover {
+    @apply bg-gray-50;
+  }
+}

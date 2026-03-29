@@ -1,0 +1,5 @@
+{
+  "name": "Eternal Ties - Marriage Expense Tracker",
+  "description": "A comprehensive and intuitive tool to track wedding expenses, manage budgets, and visualize spending across categories.",
+  "requestFramePermissions": ["microphone"]
+}
